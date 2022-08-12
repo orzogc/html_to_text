@@ -1,0 +1,23 @@
+name: html_to_text
+description: Convert html to text.
+version: 0.1.0
+#homepage:
+
+environment:
+  sdk: ">=2.17.6 <3.0.0"
+  flutter: ">=1.17.0"
+
+dependencies:
+  csslib: ^0.17.2
+  flutter:
+    sdk: flutter
+  from_css_color: ^2.0.0
+  html: ^0.15.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+# The following section is specific to Flutter packages.
+flutter:
