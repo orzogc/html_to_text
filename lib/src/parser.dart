@@ -18,7 +18,7 @@ class Span {
   String? link;
 
   Span(this.tags, this.text) {
-    for (var tag in tags) {
+    for (final tag in tags) {
       if (tag.link != null) {
         link = tag.link;
       }
@@ -35,6 +35,14 @@ class Span {
 }
 
 class Visitor extends TreeVisitor {
+  final BuildContext context;
+
+  final List<Tag>? parentTags;
+
+  final OnText? onText;
+
+  Visitor(this.context, {this.parentTags, this.onText});
+
   List<Tag> tags = [];
 
   final List<Span> spans = [];
@@ -48,16 +56,16 @@ class Visitor extends TreeVisitor {
     }
 
     for (var child in node.nodes) {
-      final parentTags = [...tags];
+      final parentTags_ = [...tags];
       visit(child);
-      tags = parentTags;
+      tags = parentTags_;
     }
 
     if (node is Element) {
       final tagName = node.localName;
 
       if (tagName == 'br') {
-        spans.add(Span([...tags], '\n')..isBr = true);
+        spans.add(Span([...?parentTags, ...tags], '\n')..isBr = true);
       } else {
         _addNewline(tagName);
       }
@@ -66,7 +74,23 @@ class Visitor extends TreeVisitor {
 
   @override
   void visitText(Text node) {
-    spans.add(Span([...tags], node.text));
+    if (onText == null) {
+      spans.add(Span([...?parentTags, ...tags], node.text));
+    } else {
+      final text = onText!(context, node.text);
+      if (text != null) {
+        try {
+          final htmlParser = HtmlParser(text);
+          final parsed = htmlParser.parseFragment();
+          final visitor =
+              Visitor(context, parentTags: [...?parentTags, ...tags])
+                ..visit(parsed);
+          spans.addAll(visitor.spans);
+        } catch (e) {
+          debugPrint('fails to parse text which onText returned: $e');
+        }
+      }
+    }
 
     super.visitText(node);
   }
@@ -167,14 +191,14 @@ class Visitor extends TreeVisitor {
 
   void _addNewline(String? tagName) {
     if (_shouldAddOneNewLine(tagName)) {
-      spans.add(Span([...tags], '\n'));
+      spans.add(Span([...?parentTags, ...tags], '\n'));
     } else if (_shouldAddTwoNewLines(tagName)) {
-      spans.add(Span([...tags], '\n\n'));
+      spans.add(Span([...?parentTags, ...tags], '\n\n'));
     }
   }
 
   /// merge new lines
-  void _mergeNewlines() {
+  void mergeNewlines() {
     final filter = <int>[];
     var num = -1;
     spans.asMap().forEach((index, span) {
@@ -230,7 +254,7 @@ class Visitor extends TreeVisitor {
   }
 
   /// remove extar new lines at the last
-  void _removeLastNewLines() {
+  void removeLastNewLines() {
     while (true) {
       if (spans.isNotEmpty) {
         final span = spans.last;
@@ -254,9 +278,11 @@ class Parser {
 
   final OnLinkTap? onLinkTap;
 
+  final OnText? onText;
+
   final List<TapGestureRecognizer> _recognizers = [];
 
-  Parser(this.context, this.html, {this.onLinkTap});
+  Parser(this.context, this.html, {this.onLinkTap, this.onText});
 
   List<TextSpan> parse() {
     if (html.isEmpty) {
@@ -266,21 +292,20 @@ class Parser {
     final textStyle = DefaultTextStyle.of(context).style;
     final textTheme = Theme.of(context).textTheme;
 
-    var content = html.replaceAll('\r\n', '');
-    content = content.replaceAll('\n', '');
+    final content = html.replaceAllMapped(RegExp('(\r\n)|(\n)'), (_) => '');
 
     try {
       final htmlParser = HtmlParser(content);
       final parsed = htmlParser.parseFragment();
-      final visitor = Visitor()
+      final visitor = Visitor(context, onText: onText)
         ..visit(parsed)
-        .._mergeNewlines()
-        .._removeLastNewLines();
+        ..mergeNewlines()
+        ..removeLastNewLines();
 
       return visitor.spans.map((span) {
         if (onLinkTap != null && span.link != null) {
           final recognizer = TapGestureRecognizer()
-            ..onTap = () => onLinkTap!(span.link!);
+            ..onTap = () => onLinkTap!(context, span.link!);
           _recognizers.add(recognizer);
           return TextSpan(
               text: span.text,

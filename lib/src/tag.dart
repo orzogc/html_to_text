@@ -16,7 +16,7 @@ class Tag {
   TextStyle _tagStyle(TextStyle textStyle, TextTheme textTheme) {
     switch (tagName) {
       case 'a':
-        textStyle = _addDecoration(textStyle, TextDecoration.underline);
+        //textStyle = _addDecoration(textStyle, TextDecoration.underline);
         return textStyle.copyWith(
             foreground: Paint()..color = const Color(0xff0077dd));
       case 'b':
