@@ -280,17 +280,22 @@ class Parser {
 
   final OnText? onText;
 
+  final TextStyle? textStyle;
+
+  final TextTheme? textTheme;
+
   final List<TapGestureRecognizer> _recognizers = [];
 
-  Parser(this.context, this.html, {this.onLinkTap, this.onText});
+  Parser(this.context, this.html,
+      {this.onLinkTap, this.onText, this.textStyle, this.textTheme});
 
   List<TextSpan> parse() {
     if (html.isEmpty) {
       return [];
     }
 
-    final textStyle = DefaultTextStyle.of(context).style;
-    final textTheme = Theme.of(context).textTheme;
+    final textStyle = this.textStyle ?? DefaultTextStyle.of(context).style;
+    final textTheme = this.textTheme ?? Theme.of(context).textTheme;
 
     final content = html.replaceAllMapped(RegExp('(\r\n)|(\n)'), (_) => '');
 

@@ -14,6 +14,7 @@ class Tag {
   void addStyle(Style style) => styles.add(style);
 
   TextStyle _tagStyle(TextStyle textStyle, TextTheme textTheme) {
+    // TODO: ol ul li
     switch (tagName) {
       case 'a':
         //textStyle = _addDecoration(textStyle, TextDecoration.underline);
