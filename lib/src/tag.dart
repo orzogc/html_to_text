@@ -1,7 +1,22 @@
 import 'package:flutter/material.dart' hide Element;
-import 'package:html/dom.dart';
 
 import 'style.dart';
+
+enum ListTag {
+  ol,
+  ul;
+}
+
+class ListData {
+  ListTag listTag;
+
+  int nestedListNum;
+
+  int? orderedNum;
+
+  ListData(
+      {required this.listTag, required this.nestedListNum, this.orderedNum});
+}
 
 class Tag {
   final String? tagName;
@@ -10,14 +25,13 @@ class Tag {
 
   String? link;
 
-  InlineSpan? onTagSpan;
+  InlineSpan? inlineSpan;
 
   Tag(this.tagName);
 
   void addStyle(Style style) => styles.add(style);
 
   TextStyle _tagStyle(TextStyle textStyle, TextTheme textTheme) {
-    // TODO: ol ul li
     switch (tagName) {
       case 'a':
         //textStyle = _addDecoration(textStyle, TextDecoration.underline);

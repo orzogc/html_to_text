@@ -10,6 +10,9 @@ typedef OnTextCallback = String? Function(BuildContext context, String text);
 typedef OnTagCallback = InlineSpan? Function(
     BuildContext context, Element element, TextStyle textStyle);
 
+typedef OnImageCallback = InlineSpan? Function(
+    BuildContext context, String? image, Element element);
+
 typedef BuildTextCallback = InlineSpan Function(
     BuildContext context, String text, TextStyle textStyle, String? link);
 
@@ -28,6 +31,8 @@ class HtmlText {
 
   Map<String, OnTagCallback>? get onTags => _parser.onTags;
 
+  OnImageCallback? get onImage => _parser.onImage;
+
   BuildTextCallback? get buildText => _parser.buildText;
 
   TextStyle? get textStyle => _parser.textStyle;
@@ -43,6 +48,7 @@ class HtmlText {
     OnTextCallback? onText,
     bool onTextRecursiveParse = false,
     Map<String, OnTagCallback>? onTags,
+    OnImageCallback? onImage,
     BuildTextCallback? buildText,
     TextStyle? textStyle,
     TextTheme? textTheme,
@@ -54,6 +60,7 @@ class HtmlText {
           onText: onText,
           onTextRecursiveParse: onTextRecursiveParse,
           onTags: onTags,
+          onImage: onImage,
           buildText: buildText,
           textStyle: textStyle,
           textTheme: textTheme,
@@ -63,7 +70,7 @@ class HtmlText {
   TextSpan toTextSpan() {
     final spans = _parser.parse();
     if (spans.isEmpty) {
-      return const TextSpan(text: '');
+      return const TextSpan();
     }
 
     return TextSpan(children: spans);
@@ -82,6 +89,7 @@ TextSpan htmlToTextSpan(
   OnTextCallback? onText,
   bool onTextRecursiveParse = false,
   Map<String, OnTagCallback>? onTags,
+  OnImageCallback? onImage,
   BuildTextCallback? buildText,
   TextStyle? textStyle,
   TextTheme? textTheme,
@@ -93,6 +101,7 @@ TextSpan htmlToTextSpan(
     onText: onText,
     onTextRecursiveParse: onTextRecursiveParse,
     onTags: onTags,
+    onImage: onImage,
     buildText: buildText,
     textStyle: textStyle,
     textTheme: textTheme,
@@ -100,7 +109,7 @@ TextSpan htmlToTextSpan(
   );
   final spans = parser.parse();
   if (spans.isEmpty) {
-    return const TextSpan(text: '');
+    return const TextSpan();
   }
 
   return TextSpan(children: spans);
@@ -112,6 +121,7 @@ RichText htmlToRichText(
   OnTextCallback? onText,
   bool onTextRecursiveParse = false,
   Map<String, OnTagCallback>? onTags,
+  OnImageCallback? onImage,
   BuildTextCallback? buildText,
   TextStyle? textStyle,
   TextTheme? textTheme,
@@ -124,6 +134,7 @@ RichText htmlToRichText(
         onText: onText,
         onTextRecursiveParse: onTextRecursiveParse,
         onTags: onTags,
+        onImage: onImage,
         buildText: buildText,
         textStyle: textStyle,
         textTheme: textTheme,

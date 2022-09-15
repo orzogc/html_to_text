@@ -8,6 +8,10 @@ import 'style.dart';
 import 'tag.dart';
 import 'html_text.dart';
 
+const String _indentation = '    ';
+
+const List<String> _bullets = [' •  ', ' ◦  ', ' ▪  '];
+
 class Span {
   final List<Tag> tags;
 
@@ -31,8 +35,8 @@ class Span {
     TextTheme textTheme,
   ) {
     for (final tag in tags) {
-      if (tag.onTagSpan != null) {
-        return tag.onTagSpan!;
+      if (tag.inlineSpan != null) {
+        return tag.inlineSpan!;
       }
 
       textStyle = tag.style(textStyle, textTheme);
@@ -45,7 +49,9 @@ class Span {
 class Visitor extends TreeVisitor {
   final BuildContext context;
 
-  final List<Tag>? parentTags;
+  List<Tag> tags;
+
+  ListData? listData;
 
   final OnTextCallback? onText;
 
@@ -53,19 +59,21 @@ class Visitor extends TreeVisitor {
 
   final Map<String, OnTagCallback>? onTags;
 
+  final OnImageCallback? onImage;
+
   final TextStyle textStyle;
 
   final TextTheme textTheme;
 
   Visitor(this.context,
-      {this.parentTags,
+      {required this.tags,
+      this.listData,
       this.onText,
       this.onTextRecursiveParse = false,
       this.onTags,
+      this.onImage,
       required this.textStyle,
       required this.textTheme});
-
-  List<Tag> tags = [];
 
   final List<Span> spans = [];
 
@@ -78,26 +86,24 @@ class Visitor extends TreeVisitor {
     }
 
     for (final child in node.nodes) {
-      final parentTags_ = [...tags];
+      final parentTags = [...tags];
+      final parentListData = listData;
       visit(child);
-      tags = parentTags_;
+      tags = parentTags;
+      listData = parentListData;
     }
 
     if (node is Element) {
       final tagName = node.localName;
 
-      if (tagName == 'br') {
-        spans.add(Span([...?parentTags, ...tags], '\n')..isBr = true);
-      } else {
-        _addNewline(tagName);
-      }
+      _addNewline(tagName);
     }
   }
 
   @override
   void visitText(Text node) {
     if (onText == null) {
-      spans.add(Span([...?parentTags, ...tags], node.text));
+      spans.add(Span([...tags], _addListPrefix(node.text)));
     } else {
       final text = onText!(context, htmlSerializeEscape(node.text));
       if (text != null) {
@@ -105,21 +111,23 @@ class Visitor extends TreeVisitor {
           try {
             final parsed = HtmlParser(text).parseFragment();
             final visitor = Visitor(context,
-                parentTags: [...?parentTags, ...tags],
+                tags: [...tags],
+                listData: listData,
                 onTags: onTags,
+                onImage: onImage,
                 textStyle: textStyle,
                 textTheme: textTheme)
               ..visit(parsed);
             spans.addAll(visitor.spans);
           } catch (e) {
             debugPrint('fails to parse text which onText returned: $e');
-            spans.add(Span([...?parentTags, ...tags], text));
+            spans.add(Span([...tags], _addListPrefix(text)));
           }
         } else {
-          spans.add(Span([...?parentTags, ...tags], text));
+          spans.add(Span([...tags], _addListPrefix(text)));
         }
       } else {
-        spans.add(Span([...?parentTags, ...tags], node.text));
+        spans.add(Span([...tags], _addListPrefix(node.text)));
       }
     }
 
@@ -218,13 +226,13 @@ class Visitor extends TreeVisitor {
     tags.add(tag);
 
     if ((onTags?.containsKey(tag.tagName) ?? false)) {
-      final styleOrSpan = Span([...?parentTags, ...tags], '')
-          .styleOrSpan(context, textStyle, textTheme);
+      final styleOrSpan =
+          Span([...tags], '').styleOrSpan(context, textStyle, textTheme);
       if (styleOrSpan is TextStyle) {
         final span = onTags![tag.tagName]!(context, node, styleOrSpan);
         if (span != null) {
-          tags.last.onTagSpan = span;
-          spans.add(Span([...?parentTags, ...tags], ''));
+          tags.last.inlineSpan = span;
+          spans.add(Span([...tags], ''));
           return;
         }
       } else {
@@ -232,14 +240,87 @@ class Visitor extends TreeVisitor {
       }
     }
 
+    if (tag.tagName == 'br') {
+      spans.add(Span([...tags], '\n')..isBr = true);
+      return;
+    }
+
+    if (tag.tagName == 'ol') {
+      if (listData != null) {
+        listData!.listTag = ListTag.ol;
+        listData!.nestedListNum++;
+        listData!.orderedNum = null;
+      } else {
+        listData = ListData(listTag: ListTag.ol, nestedListNum: 1);
+      }
+    } else if (tag.tagName == 'ul') {
+      if (listData != null) {
+        listData!.listTag = ListTag.ul;
+        listData!.nestedListNum++;
+        listData!.orderedNum = null;
+      } else {
+        listData = ListData(listTag: ListTag.ul, nestedListNum: 1);
+      }
+    } else if (tag.tagName == 'li') {
+      if (listData != null) {
+        if (listData!.listTag == ListTag.ol) {
+          if (listData!.orderedNum == null || listData!.orderedNum! <= 0) {
+            listData!.orderedNum = 1;
+          } else {
+            listData!.orderedNum = listData!.orderedNum! + 1;
+          }
+        } else {
+          listData!.orderedNum = null;
+        }
+      }
+    }
+
+    if (onImage != null && tag.tagName == 'img') {
+      final span = onImage!(context, node.attributes['src'], node);
+      if (span != null) {
+        tags.last.inlineSpan = span;
+        spans.add(Span([...tags], ''));
+        return;
+      }
+    }
+
     super.visitElement(node);
+  }
+
+  String _addListPrefix(String text) {
+    if (listData == null) {
+      return text;
+    }
+
+    if (tags.last.tagName == 'li') {
+      if (listData!.listTag == ListTag.ol &&
+          listData!.nestedListNum > 0 &&
+          listData!.orderedNum != null &&
+          listData!.orderedNum! > 0) {
+        if (listData!.orderedNum! < 10) {
+          return '${_indentation * (listData!.nestedListNum - 1)} ${listData!.orderedNum}. $text';
+        } else {
+          return '${_indentation * (listData!.nestedListNum - 1)}${listData!.orderedNum}. $text';
+        }
+      }
+
+      if (listData!.listTag == ListTag.ul && listData!.nestedListNum > 0) {
+        return '${_indentation * (listData!.nestedListNum - 1)}${_bullets[(listData!.nestedListNum - 1) % _bullets.length]}$text';
+      }
+    }
+
+    if (listData!.nestedListNum > 0) {
+      return '${_indentation * listData!.nestedListNum}$text';
+    }
+
+    return text;
   }
 
   void _addNewline(String? tagName) {
     if (_shouldAddOneNewLine(tagName)) {
-      spans.add(Span([...?parentTags, ...tags], '\n'));
+      spans.add(Span([...tags], '\n'));
     } else if (_shouldAddTwoNewLines(tagName)) {
-      spans.add(Span([...?parentTags, ...tags], '\n\n'));
+      spans.add(Span([...tags], '\n\n'));
     }
   }
 
@@ -331,6 +412,8 @@ class Parser {
 
   final Map<String, OnTagCallback>? onTags;
 
+  final OnImageCallback? onImage;
+
   final BuildTextCallback? buildText;
 
   final TextStyle? textStyle;
@@ -346,6 +429,7 @@ class Parser {
       this.onText,
       this.onTextRecursiveParse = false,
       this.onTags,
+      this.onImage,
       this.buildText,
       this.textStyle,
       this.textTheme,
@@ -365,9 +449,11 @@ class Parser {
     try {
       final parsed = HtmlParser(content).parseFragment();
       final visitor = Visitor(context,
+          tags: [],
           onText: onText,
           onTextRecursiveParse: onTextRecursiveParse,
           onTags: onTags,
+          onImage: onImage,
           textStyle: textStyle,
           textTheme: textTheme)
         ..visit(parsed)
