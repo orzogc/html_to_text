@@ -25,8 +25,16 @@ class Span {
     }
   }
 
-  TextStyle style(TextStyle textStyle, TextTheme textTheme) {
+  Object styleOrSpan(
+    BuildContext context,
+    TextStyle textStyle,
+    TextTheme textTheme,
+  ) {
     for (final tag in tags) {
+      if (tag.onTagSpan != null) {
+        return tag.onTagSpan!;
+      }
+
       textStyle = tag.style(textStyle, textTheme);
     }
 
@@ -39,9 +47,23 @@ class Visitor extends TreeVisitor {
 
   final List<Tag>? parentTags;
 
-  final OnText? onText;
+  final OnTextCallback? onText;
 
-  Visitor(this.context, {this.parentTags, this.onText});
+  final bool onTextRecursiveParse;
+
+  final Map<String, OnTagCallback>? onTags;
+
+  final TextStyle textStyle;
+
+  final TextTheme textTheme;
+
+  Visitor(this.context,
+      {this.parentTags,
+      this.onText,
+      this.onTextRecursiveParse = false,
+      this.onTags,
+      required this.textStyle,
+      required this.textTheme});
 
   List<Tag> tags = [];
 
@@ -55,7 +77,7 @@ class Visitor extends TreeVisitor {
       _addNewline(tagName);
     }
 
-    for (var child in node.nodes) {
+    for (final child in node.nodes) {
       final parentTags_ = [...tags];
       visit(child);
       tags = parentTags_;
@@ -77,18 +99,27 @@ class Visitor extends TreeVisitor {
     if (onText == null) {
       spans.add(Span([...?parentTags, ...tags], node.text));
     } else {
-      final text = onText!(context, node.text);
+      final text = onText!(context, htmlSerializeEscape(node.text));
       if (text != null) {
-        try {
-          final htmlParser = HtmlParser(text);
-          final parsed = htmlParser.parseFragment();
-          final visitor =
-              Visitor(context, parentTags: [...?parentTags, ...tags])
-                ..visit(parsed);
-          spans.addAll(visitor.spans);
-        } catch (e) {
-          debugPrint('fails to parse text which onText returned: $e');
+        if (onTextRecursiveParse) {
+          try {
+            final parsed = HtmlParser(text).parseFragment();
+            final visitor = Visitor(context,
+                parentTags: [...?parentTags, ...tags],
+                onTags: onTags,
+                textStyle: textStyle,
+                textTheme: textTheme)
+              ..visit(parsed);
+            spans.addAll(visitor.spans);
+          } catch (e) {
+            debugPrint('fails to parse text which onText returned: $e');
+            spans.add(Span([...?parentTags, ...tags], text));
+          }
+        } else {
+          spans.add(Span([...?parentTags, ...tags], text));
         }
+      } else {
+        spans.add(Span([...?parentTags, ...tags], node.text));
       }
     }
 
@@ -132,7 +163,7 @@ class Visitor extends TreeVisitor {
         value = value.trim();
 
         if (attribute == 'style') {
-          for (var style in value
+          for (final style in value
               .split(';')
               .map((style) => style.trim())
               .where((style) => style.isNotEmpty)) {
@@ -180,11 +211,26 @@ class Visitor extends TreeVisitor {
       }
     });
 
-    for (var style in lastStyles) {
+    for (final style in lastStyles) {
       tag.addStyle(style);
     }
 
     tags.add(tag);
+
+    if ((onTags?.containsKey(tag.tagName) ?? false)) {
+      final styleOrSpan = Span([...?parentTags, ...tags], '')
+          .styleOrSpan(context, textStyle, textTheme);
+      if (styleOrSpan is TextStyle) {
+        final span = onTags![tag.tagName]!(context, node, styleOrSpan);
+        if (span != null) {
+          tags.last.onTagSpan = span;
+          spans.add(Span([...?parentTags, ...tags], ''));
+          return;
+        }
+      } else {
+        debugPrint('styleOrSpan should be TextStyle');
+      }
+    }
 
     super.visitElement(node);
   }
@@ -247,6 +293,7 @@ class Visitor extends TreeVisitor {
         num = spans.length - 1;
       }
     });
+
     filter.sort();
     for (final index in filter.reversed) {
       spans.removeAt(index);
@@ -276,53 +323,94 @@ class Parser {
 
   final String html;
 
-  final OnLinkTap? onLinkTap;
+  final OnLinkTapCallback? onLinkTap;
 
-  final OnText? onText;
+  final OnTextCallback? onText;
+
+  final bool onTextRecursiveParse;
+
+  final Map<String, OnTagCallback>? onTags;
+
+  final BuildTextCallback? buildText;
 
   final TextStyle? textStyle;
 
   final TextTheme? textTheme;
 
+  final TextStyle? overrideTextStyle;
+
   final List<TapGestureRecognizer> _recognizers = [];
 
   Parser(this.context, this.html,
-      {this.onLinkTap, this.onText, this.textStyle, this.textTheme});
+      {this.onLinkTap,
+      this.onText,
+      this.onTextRecursiveParse = false,
+      this.onTags,
+      this.buildText,
+      this.textStyle,
+      this.textTheme,
+      this.overrideTextStyle});
 
-  List<TextSpan> parse() {
+  List<InlineSpan> parse() {
     if (html.isEmpty) {
       return [];
     }
 
-    final textStyle = this.textStyle ?? DefaultTextStyle.of(context).style;
-    final textTheme = this.textTheme ?? Theme.of(context).textTheme;
+    final textStyle = DefaultTextStyle.of(context).style.merge(this.textStyle);
+    final textTheme = Theme.of(context).textTheme.merge(this.textTheme);
 
-    final content = html.replaceAllMapped(RegExp('(\r\n)|(\n)'), (_) => '');
+    final content =
+        html.replaceAllMapped(RegExp('(\r\n)|(\n)|(\t)'), (_) => '');
 
     try {
-      final htmlParser = HtmlParser(content);
-      final parsed = htmlParser.parseFragment();
-      final visitor = Visitor(context, onText: onText)
+      final parsed = HtmlParser(content).parseFragment();
+      final visitor = Visitor(context,
+          onText: onText,
+          onTextRecursiveParse: onTextRecursiveParse,
+          onTags: onTags,
+          textStyle: textStyle,
+          textTheme: textTheme)
         ..visit(parsed)
         ..mergeNewlines()
         ..removeLastNewLines();
 
       return visitor.spans.map((span) {
-        if (onLinkTap != null && span.link != null) {
-          final recognizer = TapGestureRecognizer()
-            ..onTap = () => onLinkTap!(context, span.link!);
-          _recognizers.add(recognizer);
+        final styleOrSpan = span.styleOrSpan(context, textStyle, textTheme);
+
+        if (styleOrSpan is TextStyle) {
+          if (onLinkTap != null && span.link != null) {
+            final recognizer = TapGestureRecognizer()
+              ..onTap = () => onLinkTap!(context, span.link!);
+            _recognizers.add(recognizer);
+
+            if (buildText != null) {
+              return TextSpan(children: [
+                buildText!(context, span.text, styleOrSpan, span.link)
+              ], recognizer: recognizer);
+            }
+
+            return TextSpan(
+                text: span.text,
+                style: styleOrSpan.merge(overrideTextStyle),
+                recognizer: recognizer);
+          }
+
+          if (buildText != null) {
+            return buildText!(context, span.text, styleOrSpan, span.link);
+          }
+
           return TextSpan(
-              text: span.text,
-              style: span.style(textStyle, textTheme),
-              recognizer: recognizer);
+              text: span.text, style: styleOrSpan.merge(overrideTextStyle));
+        } else if (styleOrSpan is InlineSpan) {
+          return styleOrSpan;
+        } else {
+          debugPrint('unknown span: $styleOrSpan');
+          return const TextSpan();
         }
-        return TextSpan(
-            text: span.text, style: span.style(textStyle, textTheme));
       }).toList();
     } catch (e) {
       debugPrint('fails to parse html: $e');
-      return [];
+      return [TextSpan(text: html, style: textStyle)];
     }
   }
 
@@ -336,6 +424,7 @@ class Parser {
 bool _shouldAddOneNewLine(String? tagName) {
   switch (tagName) {
     case 'div':
+    case 'li':
       return true;
     default:
       return false;

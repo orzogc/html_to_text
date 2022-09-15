@@ -1,10 +1,17 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Element;
+import 'package:html/dom.dart';
 
 import 'parser.dart';
 
-typedef OnLinkTap = void Function(BuildContext context, String link);
+typedef OnLinkTapCallback = void Function(BuildContext context, String link);
 
-typedef OnText = String? Function(BuildContext context, String text);
+typedef OnTextCallback = String? Function(BuildContext context, String text);
+
+typedef OnTagCallback = InlineSpan? Function(
+    BuildContext context, Element element, TextStyle textStyle);
+
+typedef BuildTextCallback = InlineSpan Function(
+    BuildContext context, String text, TextStyle textStyle, String? link);
 
 class HtmlText {
   final Parser _parser;
@@ -13,28 +20,44 @@ class HtmlText {
 
   String get html => _parser.html;
 
-  OnLinkTap? get onLinkTap => _parser.onLinkTap;
+  OnLinkTapCallback? get onLinkTap => _parser.onLinkTap;
 
-  OnText? get onText => _parser.onText;
+  OnTextCallback? get onText => _parser.onText;
+
+  bool get onTextRecursiveParse => _parser.onTextRecursiveParse;
+
+  Map<String, OnTagCallback>? get onTags => _parser.onTags;
+
+  BuildTextCallback? get buildText => _parser.buildText;
 
   TextStyle? get textStyle => _parser.textStyle;
 
   TextTheme? get textTheme => _parser.textTheme;
 
+  TextStyle? get overrideTextStyle => _parser.overrideTextStyle;
+
   HtmlText(
     BuildContext context,
     String html, {
-    OnLinkTap? onLinkTap,
-    OnText? onText,
+    OnLinkTapCallback? onLinkTap,
+    OnTextCallback? onText,
+    bool onTextRecursiveParse = false,
+    Map<String, OnTagCallback>? onTags,
+    BuildTextCallback? buildText,
     TextStyle? textStyle,
     TextTheme? textTheme,
+    TextStyle? overrideTextStyle,
   }) : _parser = Parser(
           context,
           html,
           onLinkTap: onLinkTap,
           onText: onText,
+          onTextRecursiveParse: onTextRecursiveParse,
+          onTags: onTags,
+          buildText: buildText,
           textStyle: textStyle,
           textTheme: textTheme,
+          overrideTextStyle: overrideTextStyle,
         );
 
   TextSpan toTextSpan() {
@@ -56,16 +79,24 @@ class HtmlText {
 TextSpan htmlToTextSpan(
   BuildContext context,
   String html, {
-  OnText? onText,
+  OnTextCallback? onText,
+  bool onTextRecursiveParse = false,
+  Map<String, OnTagCallback>? onTags,
+  BuildTextCallback? buildText,
   TextStyle? textStyle,
   TextTheme? textTheme,
+  TextStyle? overrideTextStyle,
 }) {
   final parser = Parser(
     context,
     html,
     onText: onText,
+    onTextRecursiveParse: onTextRecursiveParse,
+    onTags: onTags,
+    buildText: buildText,
     textStyle: textStyle,
     textTheme: textTheme,
+    overrideTextStyle: overrideTextStyle,
   );
   final spans = parser.parse();
   if (spans.isEmpty) {
@@ -78,16 +109,24 @@ TextSpan htmlToTextSpan(
 RichText htmlToRichText(
   BuildContext context,
   String html, {
-  OnText? onText,
+  OnTextCallback? onText,
+  bool onTextRecursiveParse = false,
+  Map<String, OnTagCallback>? onTags,
+  BuildTextCallback? buildText,
   TextStyle? textStyle,
   TextTheme? textTheme,
+  TextStyle? overrideTextStyle,
 }) =>
     RichText(
       text: htmlToTextSpan(
         context,
         html,
         onText: onText,
+        onTextRecursiveParse: onTextRecursiveParse,
+        onTags: onTags,
+        buildText: buildText,
         textStyle: textStyle,
         textTheme: textTheme,
+        overrideTextStyle: overrideTextStyle,
       ),
     );

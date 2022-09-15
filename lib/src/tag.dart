@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Element;
+import 'package:html/dom.dart';
 
 import 'style.dart';
 
@@ -8,6 +9,8 @@ class Tag {
   final List<Style> styles = [];
 
   String? link;
+
+  InlineSpan? onTagSpan;
 
   Tag(this.tagName);
 
