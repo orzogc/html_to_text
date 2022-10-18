@@ -1,4 +1,6 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart' hide Element;
+import 'package:flutter/services.dart';
 import 'package:html/dom.dart';
 
 import 'parser.dart';
@@ -67,20 +69,33 @@ class HtmlText {
           overrideTextStyle: overrideTextStyle,
         );
 
-  TextSpan toTextSpan() {
-    final spans = _parser.parse();
-    if (spans.isEmpty) {
-      return const TextSpan();
-    }
+  TextSpan toTextSpan({
+    GestureRecognizer? recognizer,
+    MouseCursor? mouseCursor,
+    PointerEnterEventListener? onEnter,
+    PointerExitEventListener? onExit,
+  }) =>
+      TextSpan(
+          children: _parser.parse(),
+          recognizer: recognizer,
+          mouseCursor: mouseCursor,
+          onEnter: onEnter,
+          onExit: onExit);
 
-    return TextSpan(children: spans);
-  }
+  RichText toRichText({
+    GestureRecognizer? recognizer,
+    MouseCursor? mouseCursor,
+    PointerEnterEventListener? onEnter,
+    PointerExitEventListener? onExit,
+  }) =>
+      RichText(
+          text: toTextSpan(
+              recognizer: recognizer,
+              mouseCursor: mouseCursor,
+              onEnter: onEnter,
+              onExit: onExit));
 
-  RichText toRichText() => RichText(text: toTextSpan());
-
-  void dispose() {
-    _parser.dispose();
-  }
+  void dispose() => _parser.dispose();
 }
 
 TextSpan htmlToTextSpan(
@@ -94,6 +109,10 @@ TextSpan htmlToTextSpan(
   TextStyle? textStyle,
   TextTheme? textTheme,
   TextStyle? overrideTextStyle,
+  GestureRecognizer? recognizer,
+  MouseCursor? mouseCursor,
+  PointerEnterEventListener? onEnter,
+  PointerExitEventListener? onExit,
 }) {
   final parser = Parser(
     context,
@@ -107,12 +126,13 @@ TextSpan htmlToTextSpan(
     textTheme: textTheme,
     overrideTextStyle: overrideTextStyle,
   );
-  final spans = parser.parse();
-  if (spans.isEmpty) {
-    return const TextSpan();
-  }
 
-  return TextSpan(children: spans);
+  return TextSpan(
+      children: parser.parse(),
+      recognizer: recognizer,
+      mouseCursor: mouseCursor,
+      onEnter: onEnter,
+      onExit: onExit);
 }
 
 RichText htmlToRichText(
@@ -126,6 +146,10 @@ RichText htmlToRichText(
   TextStyle? textStyle,
   TextTheme? textTheme,
   TextStyle? overrideTextStyle,
+  GestureRecognizer? recognizer,
+  MouseCursor? mouseCursor,
+  PointerEnterEventListener? onEnter,
+  PointerExitEventListener? onExit,
 }) =>
     RichText(
       text: htmlToTextSpan(
@@ -139,5 +163,9 @@ RichText htmlToRichText(
         textStyle: textStyle,
         textTheme: textTheme,
         overrideTextStyle: overrideTextStyle,
+        recognizer: recognizer,
+        mouseCursor: mouseCursor,
+        onEnter: onEnter,
+        onExit: onExit,
       ),
     );
