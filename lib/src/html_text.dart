@@ -1,11 +1,12 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart' hide Element;
-import 'package:flutter/services.dart';
 import 'package:html/dom.dart';
 
 import 'parser.dart';
 
-typedef OnLinkTapCallback = void Function(BuildContext context, String link);
+typedef OnLinkTapCallback = void Function(
+    BuildContext context, String link, String text);
+
+typedef OnTextTapCallback = void Function(BuildContext context, String text);
 
 typedef OnTextCallback = String? Function(BuildContext context, String text);
 
@@ -47,6 +48,7 @@ class HtmlText {
     BuildContext context,
     String html, {
     OnLinkTapCallback? onLinkTap,
+    OnTextTapCallback? onTextTap,
     OnTextCallback? onText,
     bool onTextRecursiveParse = false,
     Map<String, OnTagCallback>? onTags,
@@ -59,6 +61,7 @@ class HtmlText {
           context,
           html,
           onLinkTap: onLinkTap,
+          onTextTap: onTextTap,
           onText: onText,
           onTextRecursiveParse: onTextRecursiveParse,
           onTags: onTags,
@@ -69,31 +72,16 @@ class HtmlText {
           overrideTextStyle: overrideTextStyle,
         );
 
-  TextSpan toTextSpan({
-    GestureRecognizer? recognizer,
-    MouseCursor? mouseCursor,
-    PointerEnterEventListener? onEnter,
-    PointerExitEventListener? onExit,
-  }) =>
-      TextSpan(
-          children: _parser.parse(),
-          recognizer: recognizer,
-          mouseCursor: mouseCursor,
-          onEnter: onEnter,
-          onExit: onExit);
+  TextSpan toTextSpan() {
+    final spans = _parser.parse();
+    if (spans.isEmpty) {
+      return const TextSpan();
+    }
 
-  RichText toRichText({
-    GestureRecognizer? recognizer,
-    MouseCursor? mouseCursor,
-    PointerEnterEventListener? onEnter,
-    PointerExitEventListener? onExit,
-  }) =>
-      RichText(
-          text: toTextSpan(
-              recognizer: recognizer,
-              mouseCursor: mouseCursor,
-              onEnter: onEnter,
-              onExit: onExit));
+    return TextSpan(children: spans);
+  }
+
+  RichText toRichText() => RichText(text: toTextSpan());
 
   void dispose() => _parser.dispose();
 }
@@ -109,10 +97,6 @@ TextSpan htmlToTextSpan(
   TextStyle? textStyle,
   TextTheme? textTheme,
   TextStyle? overrideTextStyle,
-  GestureRecognizer? recognizer,
-  MouseCursor? mouseCursor,
-  PointerEnterEventListener? onEnter,
-  PointerExitEventListener? onExit,
 }) {
   final parser = Parser(
     context,
@@ -127,12 +111,12 @@ TextSpan htmlToTextSpan(
     overrideTextStyle: overrideTextStyle,
   );
 
-  return TextSpan(
-      children: parser.parse(),
-      recognizer: recognizer,
-      mouseCursor: mouseCursor,
-      onEnter: onEnter,
-      onExit: onExit);
+  final spans = parser.parse();
+  if (spans.isEmpty) {
+    return const TextSpan();
+  }
+
+  return TextSpan(children: spans);
 }
 
 RichText htmlToRichText(
@@ -146,10 +130,6 @@ RichText htmlToRichText(
   TextStyle? textStyle,
   TextTheme? textTheme,
   TextStyle? overrideTextStyle,
-  GestureRecognizer? recognizer,
-  MouseCursor? mouseCursor,
-  PointerEnterEventListener? onEnter,
-  PointerExitEventListener? onExit,
 }) =>
     RichText(
       text: htmlToTextSpan(
@@ -163,9 +143,5 @@ RichText htmlToRichText(
         textStyle: textStyle,
         textTheme: textTheme,
         overrideTextStyle: overrideTextStyle,
-        recognizer: recognizer,
-        mouseCursor: mouseCursor,
-        onEnter: onEnter,
-        onExit: onExit,
       ),
     );

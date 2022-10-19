@@ -406,6 +406,8 @@ class Parser {
 
   final OnLinkTapCallback? onLinkTap;
 
+  final OnTextTapCallback? onTextTap;
+
   final OnTextCallback? onText;
 
   final bool onTextRecursiveParse;
@@ -426,6 +428,7 @@ class Parser {
 
   Parser(this.context, this.html,
       {this.onLinkTap,
+      this.onTextTap,
       this.onText,
       this.onTextRecursiveParse = false,
       this.onTags,
@@ -464,16 +467,14 @@ class Parser {
         final styleOrSpan = span.styleOrSpan(context, textStyle, textTheme);
 
         if (styleOrSpan is TextStyle) {
+          if (buildText != null) {
+            return buildText!(context, span.text, styleOrSpan, span.link);
+          }
+
           if (onLinkTap != null && span.link != null) {
             final recognizer = TapGestureRecognizer()
-              ..onTap = () => onLinkTap!(context, span.link!);
+              ..onTap = () => onLinkTap!(context, span.link!, span.text);
             _recognizers.add(recognizer);
-
-            if (buildText != null) {
-              return TextSpan(children: [
-                buildText!(context, span.text, styleOrSpan, span.link)
-              ], recognizer: recognizer);
-            }
 
             return TextSpan(
                 text: span.text,
@@ -481,8 +482,15 @@ class Parser {
                 recognizer: recognizer);
           }
 
-          if (buildText != null) {
-            return buildText!(context, span.text, styleOrSpan, span.link);
+          if (onTextTap != null) {
+            final recognizer = TapGestureRecognizer()
+              ..onTap = () => onTextTap!(context, span.text);
+            _recognizers.add(recognizer);
+
+            return TextSpan(
+                text: span.text,
+                style: styleOrSpan.merge(overrideTextStyle),
+                recognizer: recognizer);
           }
 
           return TextSpan(
@@ -496,7 +504,7 @@ class Parser {
       }).toList();
     } catch (e) {
       debugPrint('fails to parse html: $e');
-      return [TextSpan(text: html, style: textStyle)];
+      return [TextSpan(text: html, style: textStyle.merge(overrideTextStyle))];
     }
   }
 
