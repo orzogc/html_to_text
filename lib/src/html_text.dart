@@ -81,7 +81,8 @@ class HtmlText {
     return TextSpan(children: spans);
   }
 
-  RichText toRichText() => RichText(text: toTextSpan());
+  RichText toRichText({StrutStyle? strutStyle}) =>
+      RichText(text: toTextSpan(), strutStyle: strutStyle);
 
   void dispose() => _parser.dispose();
 }
@@ -130,6 +131,7 @@ RichText htmlToRichText(
   TextStyle? textStyle,
   TextTheme? textTheme,
   TextStyle? overrideTextStyle,
+  StrutStyle? strutStyle,
 }) =>
     RichText(
       text: htmlToTextSpan(
@@ -144,4 +146,5 @@ RichText htmlToRichText(
         textTheme: textTheme,
         overrideTextStyle: overrideTextStyle,
       ),
+      strutStyle: strutStyle,
     );
