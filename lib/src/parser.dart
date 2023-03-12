@@ -55,7 +55,7 @@ class Visitor extends TreeVisitor {
 
   final OnTextCallback? onText;
 
-  final bool onTextRecursiveParse;
+  final bool isParsingTextRecursively;
 
   final Map<String, OnTagCallback>? onTags;
 
@@ -69,7 +69,7 @@ class Visitor extends TreeVisitor {
       {required this.tags,
       this.listData,
       this.onText,
-      this.onTextRecursiveParse = false,
+      this.isParsingTextRecursively = false,
       this.onTags,
       this.onImage,
       required this.textStyle,
@@ -107,7 +107,7 @@ class Visitor extends TreeVisitor {
     } else {
       final text = onText!(context, htmlSerializeEscape(node.text));
       if (text != null) {
-        if (onTextRecursiveParse) {
+        if (isParsingTextRecursively) {
           try {
             final parsed = HtmlParser(text).parseFragment();
             final visitor = Visitor(context,
@@ -404,13 +404,13 @@ class Parser {
 
   final String html;
 
-  final OnLinkTapCallback? onLinkTap;
+  final OnTapLinkCallback? onTapLink;
 
-  final OnTextTapCallback? onTextTap;
+  final OnTapTextCallback? onTapText;
 
   final OnTextCallback? onText;
 
-  final bool onTextRecursiveParse;
+  final bool isParsingTextRecursively;
 
   final Map<String, OnTagCallback>? onTags;
 
@@ -422,21 +422,21 @@ class Parser {
 
   final TextTheme? textTheme;
 
-  final TextStyle? overrideTextStyle;
+  final TextStyle? overrodeTextStyle;
 
   final List<TapGestureRecognizer> _recognizers = [];
 
   Parser(this.context, this.html,
-      {this.onLinkTap,
-      this.onTextTap,
+      {this.onTapLink,
+      this.onTapText,
       this.onText,
-      this.onTextRecursiveParse = false,
+      this.isParsingTextRecursively = false,
       this.onTags,
       this.onImage,
       this.buildText,
       this.textStyle,
       this.textTheme,
-      this.overrideTextStyle});
+      this.overrodeTextStyle});
 
   List<InlineSpan> parse() {
     if (html.isEmpty) {
@@ -454,7 +454,7 @@ class Parser {
       final visitor = Visitor(context,
           tags: [],
           onText: onText,
-          onTextRecursiveParse: onTextRecursiveParse,
+          isParsingTextRecursively: isParsingTextRecursively,
           onTags: onTags,
           onImage: onImage,
           textStyle: textStyle,
@@ -471,30 +471,30 @@ class Parser {
             return buildText!(context, span.text, styleOrSpan, span.link);
           }
 
-          if (onLinkTap != null && span.link != null) {
+          if (onTapLink != null && span.link != null) {
             final recognizer = TapGestureRecognizer()
-              ..onTap = () => onLinkTap!(context, span.link!, span.text);
+              ..onTap = () => onTapLink!(context, span.link!, span.text);
             _recognizers.add(recognizer);
 
             return TextSpan(
                 text: span.text,
-                style: styleOrSpan.merge(overrideTextStyle),
+                style: styleOrSpan.merge(overrodeTextStyle),
                 recognizer: recognizer);
           }
 
-          if (onTextTap != null) {
+          if (onTapText != null) {
             final recognizer = TapGestureRecognizer()
-              ..onTap = () => onTextTap!(context, span.text);
+              ..onTap = () => onTapText!(context, span.text);
             _recognizers.add(recognizer);
 
             return TextSpan(
                 text: span.text,
-                style: styleOrSpan.merge(overrideTextStyle),
+                style: styleOrSpan.merge(overrodeTextStyle),
                 recognizer: recognizer);
           }
 
           return TextSpan(
-              text: span.text, style: styleOrSpan.merge(overrideTextStyle));
+              text: span.text, style: styleOrSpan.merge(overrodeTextStyle));
         } else if (styleOrSpan is InlineSpan) {
           return styleOrSpan;
         } else {
@@ -504,7 +504,7 @@ class Parser {
       }).toList();
     } catch (e) {
       debugPrint('fails to parse html: $e');
-      return [TextSpan(text: html, style: textStyle.merge(overrideTextStyle))];
+      return [TextSpan(text: html, style: textStyle.merge(overrodeTextStyle))];
     }
   }
 

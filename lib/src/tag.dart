@@ -48,34 +48,34 @@ class Tag {
         return textStyle.copyWith(fontStyle: FontStyle.italic);
       case 'h1':
         return textStyle.copyWith(
-            fontSize: textTheme.headline1?.fontSize,
-            fontWeight: textTheme.headline1?.fontWeight,
-            letterSpacing: textTheme.headline1?.letterSpacing);
+            fontSize: textTheme.displayLarge?.fontSize,
+            fontWeight: textTheme.displayLarge?.fontWeight,
+            letterSpacing: textTheme.displayLarge?.letterSpacing);
       case 'h2':
         return textStyle.copyWith(
-            fontSize: textTheme.headline2?.fontSize,
-            fontWeight: textTheme.headline2?.fontWeight,
-            letterSpacing: textTheme.headline2?.letterSpacing);
+            fontSize: textTheme.displayMedium?.fontSize,
+            fontWeight: textTheme.displayMedium?.fontWeight,
+            letterSpacing: textTheme.displayMedium?.letterSpacing);
       case 'h3':
         return textStyle.copyWith(
-            fontSize: textTheme.headline3?.fontSize,
-            fontWeight: textTheme.headline3?.fontWeight,
-            letterSpacing: textTheme.headline3?.letterSpacing);
+            fontSize: textTheme.displaySmall?.fontSize,
+            fontWeight: textTheme.displaySmall?.fontWeight,
+            letterSpacing: textTheme.displaySmall?.letterSpacing);
       case 'h4':
         return textStyle.copyWith(
-            fontSize: textTheme.headline4?.fontSize,
-            fontWeight: textTheme.headline4?.fontWeight,
-            letterSpacing: textTheme.headline4?.letterSpacing);
+            fontSize: textTheme.headlineMedium?.fontSize,
+            fontWeight: textTheme.headlineMedium?.fontWeight,
+            letterSpacing: textTheme.headlineMedium?.letterSpacing);
       case 'h5':
         return textStyle.copyWith(
-            fontSize: textTheme.headline5?.fontSize,
-            fontWeight: textTheme.headline5?.fontWeight,
-            letterSpacing: textTheme.headline5?.letterSpacing);
+            fontSize: textTheme.headlineSmall?.fontSize,
+            fontWeight: textTheme.headlineSmall?.fontWeight,
+            letterSpacing: textTheme.headlineSmall?.letterSpacing);
       case 'h6':
         return textStyle.copyWith(
-            fontSize: textTheme.headline6?.fontSize,
-            fontWeight: textTheme.headline6?.fontWeight,
-            letterSpacing: textTheme.headline6?.letterSpacing);
+            fontSize: textTheme.titleLarge?.fontSize,
+            fontWeight: textTheme.titleLarge?.fontWeight,
+            letterSpacing: textTheme.titleLarge?.letterSpacing);
       case 'ins':
       case 'u':
         return _addDecoration(textStyle, TextDecoration.underline);

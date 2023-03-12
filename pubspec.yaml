@@ -4,15 +4,15 @@ version: 0.1.0
 #homepage:
 
 environment:
-  sdk: ">=2.18.4 <3.0.0"
-  flutter: ">=3.3.0"
+  sdk: ">=2.19.3 <3.0.0"
+  flutter: ">=3.7.6"
 
 dependencies:
   csslib: ^0.17.2
   flutter:
     sdk: flutter
   from_css_color: ^2.0.0
-  html: ^0.15.1
+  html: ^0.15.2
 
 dev_dependencies:
   flutter_test:
